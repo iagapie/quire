@@ -79,8 +79,7 @@ jobs:
       run:
         shell: bash
     env:
-      # nfpm.yaml reads the package architecture and maintainer from the environment.
-      GOARCH: ${{ matrix.arch != 'universal' && matrix.arch || '' }}
+      # nfpm.yaml reads the maintainer from the environment.
       GIT_COMMITTER_NAME: Igor Agapie
       GIT_COMMITTER_EMAIL: iagapie@users.noreply.github.com
     steps:
@@ -117,6 +116,11 @@ jobs:
 
       - name: Build Linux (deb, rpm)
         if: matrix.platform == 'linux'
+        # nfpm.yaml reads the package architecture from GOARCH. Only here: Task lets OS
+        # environment variables win over a task's env, so a job-wide GOARCH would
+        # override the per-architecture builds of the macOS universal binary.
+        env:
+          GOARCH: ${{ matrix.arch }}
         run: |
           go tool wails3 task linux:build
           go tool wails3 task linux:generate:deb
@@ -127,17 +131,27 @@ jobs:
       - name: Install NSIS
         if: matrix.platform == 'windows'
         shell: pwsh
+        # The portable NSIS zip, pinned by hash, instead of Chocolatey: its community
+        # feed times out often enough to break builds.
+        env:
+          NSIS_VERSION: "3.13"
+          NSIS_SHA256: ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8
         run: |
-          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
-            choco install nsis -y --no-progress
-          }
-          foreach ($dir in "${env:ProgramFiles(x86)}\NSIS", "$env:ProgramFiles\NSIS") {
-            if (Test-Path "$dir\makensis.exe") { $dir | Out-File -Append -Encoding utf8 $env:GITHUB_PATH }
-          }
+          if (Get-Command makensis -ErrorAction SilentlyContinue) { exit 0 }
+          $zip = Join-Path $env:RUNNER_TEMP "nsis.zip"
+          Invoke-WebRequest "https://downloads.sourceforge.net/project/nsis/NSIS%203/$env:NSIS_VERSION/nsis-$env:NSIS_VERSION.zip" `
+            -OutFile $zip -UserAgent "curl" -MaximumRetryCount 5 -RetryIntervalSec 15
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($hash -ne $env:NSIS_SHA256) { throw "nsis.zip SHA-256 is $hash, expected $env:NSIS_SHA256" }
+          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+          $dir = Join-Path $env:RUNNER_TEMP "nsis-$env:NSIS_VERSION"
+          if (-not (Test-Path "$dir\makensis.exe")) { throw "makensis.exe not found in $dir" }
+          $dir | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
 
       - name: Build Windows (exe, NSIS installer)
         if: matrix.platform == 'windows'
         run: |
+          makensis -VERSION
           go tool wails3 task windows:create:nsis:installer ARCH=${{ matrix.arch }}
           mv "bin/quire-${{ matrix.arch }}-installer.exe" "dist/Quire-$VERSION-windows-${{ matrix.arch }}-setup.exe"
           pwsh -NoProfile -Command "Compress-Archive -Path bin/quire.exe -DestinationPath dist/Quire-$VERSION-windows-${{ matrix.arch }}.zip"
