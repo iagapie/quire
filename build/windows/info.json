@@ -1,10 +1,10 @@
 {
 	"fixed": {
-		"file_version": "0.0.1"
+		"file_version": "0.1.0"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.0.1",
+			"ProductVersion": "0.1.0",
 			"CompanyName": "Igor Agapie",
 			"FileDescription": "Database editor for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Cosmos DB, MongoDB and DocumentDB",
 			"LegalCopyright": "© 2026 Igor Agapie",
