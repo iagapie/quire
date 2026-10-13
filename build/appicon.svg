@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Quire app icon: a ticket whose body holds key/value rows. -->
+  <defs>
+    <path id="ticket" d="M36,0 H366 A34,34 0 0 0 434,0 H544 A36,36 0 0 1 580,36 V344 A36,36 0 0 1 544,380 H434 A34,34 0 0 0 366,380 H36 A36,36 0 0 1 0,344 V36 A36,36 0 0 1 36,0 Z"/>
+    <clipPath id="ticket-clip"><use href="#ticket"/></clipPath>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="22" stdDeviation="26" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <radialGradient id="glow" cx="50%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#1D2027"/>
+      <stop offset="1" stop-color="#121418"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background tile (macOS grid: 824pt body, 100pt margin) -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#glow)"/>
+  <rect x="101" y="101" width="822" height="822" rx="185" fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="2"/>
+
+  <g transform="rotate(-8 512 512) translate(222 322)">
+    <g filter="url(#lift)">
+      <use href="#ticket" fill="#EFE9DD"/>
+    </g>
+    <!-- Stub -->
+    <rect x="400" y="0" width="180" height="380" fill="#34D399" clip-path="url(#ticket-clip)"/>
+    <g fill="none" stroke="#121418" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M470,128 Q450,128 450,148 L450,172 Q450,190 434,190 Q450,190 450,208 L450,232 Q450,252 470,252"/>
+      <path d="M510,128 Q530,128 530,148 L530,172 Q530,190 546,190 Q530,190 530,208 L530,232 Q530,252 510,252"/>
+    </g>
+    <!-- Perforation -->
+    <g fill="#121418">
+      <circle cx="400" cy="66" r="5.5"/>
+      <circle cx="400" cy="97" r="5.5"/>
+      <circle cx="400" cy="128" r="5.5"/>
+      <circle cx="400" cy="159" r="5.5"/>
+      <circle cx="400" cy="190" r="5.5"/>
+      <circle cx="400" cy="221" r="5.5"/>
+      <circle cx="400" cy="252" r="5.5"/>
+      <circle cx="400" cy="283" r="5.5"/>
+      <circle cx="400" cy="314" r="5.5"/>
+    </g>
+    <!-- Key / value rows -->
+    <g>
+      <rect x="56" y="111" width="56" height="26" rx="13" fill="#121418"/>
+      <rect x="130" y="111" width="176" height="26" rx="13" fill="#0D9F6E"/>
+      <rect x="56" y="177" width="56" height="26" rx="13" fill="#121418"/>
+      <rect x="130" y="177" width="118" height="26" rx="13" fill="#121418" fill-opacity="0.28"/>
+      <rect x="56" y="243" width="56" height="26" rx="13" fill="#121418"/>
+      <rect x="130" y="243" width="200" height="26" rx="13" fill="#121418" fill-opacity="0.28"/>
+    </g>
+  </g>
+</svg>

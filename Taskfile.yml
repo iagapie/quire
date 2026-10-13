@@ -1,0 +1,92 @@
+version: '3'
+
+vars:
+  APP_NAME: "quire"
+  # Name of the macOS .app bundle and .dmg, as shown in Finder, the Dock and Launchpad.
+  PRODUCT_NAME: "Quire"
+  BIN_DIR: "bin"
+  PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  GOOS: '{{.GOOS | default OS}}'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+
+tasks:
+  build:
+    summary: Builds the application
+    cmds:
+      - task: "{{.GOOS}}:build"
+
+  package:
+    summary: Packages a production build of the application
+    cmds:
+      - task: "{{.GOOS}}:package"
+
+  run:
+    summary: Runs the application
+    cmds:
+      - task: "{{.GOOS}}:run"
+
+  dev:
+    summary: Runs the application in development mode
+    cmds:
+      - go tool wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+
+  test:
+    summary: Runs Go tests with the race detector (-race also sets the "race" build tag)
+    deps: [embed:placeholder]
+    cmds:
+      - go test -race ./...
+
+  test:integration:
+    summary: Runs the Go tests against disposable database containers (started and removed here)
+    deps: [embed:placeholder]
+    cmds:
+      - ./scripts/test-databases.sh
+
+  test:frontend:
+    summary: Runs the frontend unit tests (Vitest) and the TypeScript type check
+    dir: frontend
+    cmds:
+      - npm run typecheck
+      - npm test
+
+  coverage:
+    summary: Runs Go tests with coverage and prints the per-function report (coverage.out)
+    deps: [embed:placeholder]
+    cmds:
+      - go test -race -covermode=atomic -coverprofile=coverage.out ./internal/...
+      - go tool cover -func=coverage.out | tail -1
+
+  fuzz:
+    summary: Runs each fuzz test for FUZZTIME (default 30s)
+    vars:
+      FUZZTIME: '{{.FUZZTIME | default "30s"}}'
+    cmds:
+      - go test -run '^$' -fuzz '^FuzzSplit$' -fuzztime {{.FUZZTIME}} ./internal/sqlsplit
+      - go test -run '^$' -fuzz '^FuzzCSV$' -fuzztime {{.FUZZTIME}} ./internal/transfer
+      - go test -run '^$' -fuzz '^FuzzEval$' -fuzztime {{.FUZZTIME}} ./internal/shell
+      - go test -run '^$' -fuzz '^FuzzSelectStatements$' -fuzztime {{.FUZZTIME}} ./internal/shell
+      - go test -run '^$' -fuzz '^FuzzDecoder$' -fuzztime {{.FUZZTIME}} ./internal/docdump
+
+  lint:
+    summary: Runs golangci-lint (configured in .golangci.yaml)
+    deps: [embed:placeholder]
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint is not installed: https://golangci-lint.run/welcome/install/"
+    cmds:
+      - golangci-lint run ./...
+
+  embed:placeholder:
+    summary: Creates frontend/dist when missing so //go:embed compiles without a frontend build
+    internal: true
+    status:
+      - test -d frontend/dist
+    cmds:
+      - mkdir -p frontend/dist
+      - touch frontend/dist/.gitkeep

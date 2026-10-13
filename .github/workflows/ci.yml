@@ -1,0 +1,168 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-amd64, os: ubuntu-24.04, race: true }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, race: true }
+          - { name: macos-arm64, os: macos-latest, race: true }
+          - { name: windows-amd64, os: windows-latest, race: true }
+          # The race detector does not support windows/arm64, and duckdb-go ships no
+          # library for it (DuckDB is only in builds with the duckdb tag anyway).
+          - { name: windows-arm64, os: windows-11-arm, race: false, skip: /internal/dialect/duckdb }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Integration tests skip themselves without QUIRE_TEST_* (see task test:integration).
+      - shell: bash
+        run: go test ${{ matrix.race && '-race' || '' }} $(go list ./... | grep -v -e '${{ matrix.skip || '^$' }}')
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node: "true"
+      - run: go tool wails3 generate bindings -ts -i -clean=true
+      - working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: [lint, test, frontend]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-universal, os: macos-latest, platform: darwin, arch: universal }
+          - { name: macos-arm64, os: macos-latest, platform: darwin, arch: arm64 }
+          - { name: linux-amd64, os: ubuntu-24.04, platform: linux, arch: amd64 }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, platform: linux, arch: arm64 }
+          - { name: windows-amd64, os: windows-latest, platform: windows, arch: amd64 }
+          - { name: windows-arm64, os: windows-11-arm, platform: windows, arch: arm64 }
+    defaults:
+      run:
+        shell: bash
+    env:
+      # nfpm.yaml reads the package architecture and maintainer from the environment.
+      GOARCH: ${{ matrix.arch != 'universal' && matrix.arch || '' }}
+      GIT_COMMITTER_NAME: Igor Agapie
+      GIT_COMMITTER_EMAIL: iagapie@users.noreply.github.com
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          node: "true"
+
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            scripts/set-version.sh "${GITHUB_REF_NAME#v}"
+          fi
+          version=$(perl -ne 'print $1 if /^\s+version:\s*"([^"]+)"/' build/config.yml)
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          mkdir -p dist
+
+      - name: Build macOS (Apple silicon)
+        if: matrix.platform == 'darwin' && matrix.arch == 'arm64'
+        run: go tool wails3 task darwin:package:dmg
+
+      - name: Build macOS (universal)
+        if: matrix.platform == 'darwin' && matrix.arch == 'universal'
+        run: |
+          go tool wails3 task darwin:package:universal
+          go tool wails3 task darwin:create:dmg
+
+      - name: Collect macOS artifacts
+        if: matrix.platform == 'darwin'
+        run: |
+          lipo -info bin/Quire.app/Contents/MacOS/quire
+          mv bin/Quire.dmg "dist/Quire-$VERSION-macos-${{ matrix.arch }}.dmg"
+          ditto -c -k --keepParent bin/Quire.app "dist/Quire-$VERSION-macos-${{ matrix.arch }}.zip"
+
+      - name: Build Linux (deb, rpm)
+        if: matrix.platform == 'linux'
+        run: |
+          go tool wails3 task linux:build
+          go tool wails3 task linux:generate:deb
+          go tool wails3 task linux:generate:rpm
+          mv bin/*.deb bin/*.rpm dist/
+          tar -czf "dist/quire-$VERSION-linux-${{ matrix.arch }}.tar.gz" -C bin quire
+
+      - name: Install NSIS
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            choco install nsis -y --no-progress
+          }
+          foreach ($dir in "${env:ProgramFiles(x86)}\NSIS", "$env:ProgramFiles\NSIS") {
+            if (Test-Path "$dir\makensis.exe") { $dir | Out-File -Append -Encoding utf8 $env:GITHUB_PATH }
+          }
+
+      - name: Build Windows (exe, NSIS installer)
+        if: matrix.platform == 'windows'
+        run: |
+          go tool wails3 task windows:create:nsis:installer ARCH=${{ matrix.arch }}
+          mv "bin/quire-${{ matrix.arch }}-installer.exe" "dist/Quire-$VERSION-windows-${{ matrix.arch }}-setup.exe"
+          pwsh -NoProfile -Command "Compress-Archive -Path bin/quire.exe -DestinationPath dist/Quire-$VERSION-windows-${{ matrix.arch }}.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: quire-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes \
+            ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}

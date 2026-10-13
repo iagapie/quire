@@ -1,0 +1,20 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+ij_javascript_use_double_quotes = false
+ij_javascript_spaces_within_imports = false
+ij_typescript_use_double_quotes = false
+ij_typescript_spaces_within_imports = false
+ij_typescript_use_semicolon_after_statement = false
+
+[*.{yml,yaml,css,scss,js,jsx,ts,tsx,vue,html,gohtml,json,toml}]
+indent_size = 2
+
+[*.md]
+max_line_length = off
+trim_trailing_whitespace = false

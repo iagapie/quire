@@ -1,0 +1,60 @@
+name: Set up the Quire toolchain
+description: >-
+  Go (from go.mod), optionally Node.js, the native libraries Wails needs on Linux, a C
+  compiler for cgo on Windows (llvm-mingw on Arm), and an empty frontend/dist so
+  //go:embed compiles without a frontend build.
+
+inputs:
+  node:
+    description: Install Node.js and cache the npm downloads.
+    default: "false"
+  node-version:
+    description: Node.js version.
+    default: "22"
+  llvm-mingw-version:
+    description: llvm-mingw release used as the cgo compiler on Windows Arm.
+    default: "20261006"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v7
+      with:
+        go-version-file: go.mod
+        cache-dependency-path: go.sum
+
+    - if: inputs.node == 'true'
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: frontend/package-lock.json
+
+    # GTK4 + WebKitGTK 6.0: cgo needs the headers to compile, and golangci-lint to type-check.
+    - if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev
+
+    # The Oracle driver (godror) is cgo-only, so Windows builds need a C compiler too.
+    # windows-latest has MinGW gcc; the Arm image has none, so use llvm-mingw.
+    - if: runner.os == 'Windows' && runner.arch == 'ARM64'
+      shell: pwsh
+      run: |
+        $name = "llvm-mingw-${{ inputs.llvm-mingw-version }}-ucrt-aarch64"
+        $zip = Join-Path $env:RUNNER_TEMP "$name.zip"
+        Invoke-WebRequest "https://github.com/mstorsjo/llvm-mingw/releases/download/${{ inputs.llvm-mingw-version }}/$name.zip" -OutFile $zip
+        Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+        Join-Path $env:RUNNER_TEMP "$name\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+        "CC=aarch64-w64-mingw32-clang" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+        "CXX=aarch64-w64-mingw32-clang++" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+    - if: runner.os == 'Windows'
+      shell: bash
+      run: echo "CGO_ENABLED=1" >> "$GITHUB_ENV"
+
+    - shell: bash
+      run: |
+        mkdir -p frontend/dist
+        touch frontend/dist/.gitkeep

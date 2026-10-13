@@ -1,0 +1,66 @@
+version: "2"
+
+run:
+  timeout: 30m
+  build-tags:
+    - race
+
+linters:
+  # Explicit list — no implicit defaults; add/remove linters here, deliberately.
+  default: none
+  enable:
+    # correctness
+    - govet
+    - staticcheck
+    - unused
+    - errcheck
+    - errorlint
+    - nilerr
+    - copyloopvar
+    - durationcheck
+    - reassign
+    - bodyclose
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - bidichk
+    - asciicheck
+    # style
+    - misspell
+    - errname
+    - predeclared
+    - whitespace
+    # performance
+    - ineffassign
+    - unconvert
+    - perfsprint
+    # security
+    - gosec
+    # logging
+    - sloglint
+    - loggercheck
+    # testing
+    - testifylint
+    - thelper
+    - usetesting
+    # modernization & meta
+    - intrange
+    - usestdlibvars
+    - exptostd
+    - fatcontext
+    - nolintlint
+
+  settings:
+    gosec:
+      excludes:
+        - G103 # unsafe usage is deliberate and audited (internal/common/convert/unsafe.go)
+        - G301 # directory permissions — app-generated export/archive dirs, not sensitive
+        - G302 # file permissions — same as above
+        - G304 # file inclusion via variable — paths are app-generated, not user input
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
+formatters:
+  enable:
+    - gofmt

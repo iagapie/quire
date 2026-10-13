@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 380" width="540" height="380">
+  <!-- DMG window background. Finder places Quire.app at x=151 and Applications at x=389. -->
+  <rect width="540" height="380" fill="#F4F1EA"/>
+  <rect x="0" y="0" width="540" height="6" fill="#34D399"/>
+  <g fill="none" stroke="#121418" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M226,170 H310" stroke-dasharray="1 10"/>
+    <path d="M302,160 L314,170 L302,180"/>
+  </g>
+  <text x="270" y="318" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="13" fill="#787776" letter-spacing="0.2">Drag Quire to Applications to install</text>
+</svg>
