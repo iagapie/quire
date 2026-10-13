@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iagapie/quire/internal/dialect"
 	_ "github.com/iagapie/quire/internal/dialect/all"
-	_ "github.com/iagapie/quire/internal/dialect/duckdb" // built into the app only with -tags duckdb
 	"github.com/iagapie/quire/internal/docsession"
 	"github.com/iagapie/quire/internal/profile"
 	"github.com/iagapie/quire/internal/query"
@@ -147,15 +147,18 @@ func servers(t *testing.T) []server {
 			},
 		})
 	}
-	out = append(out, server{
-		name:     "DuckDB",
-		profile:  profile.Profile{Name: "duck", Driver: "duckdb", Database: filepath.Join(dir, "t.duckdb"), Options: map[string]string{"create": "true"}},
-		database: "t", schema: "main",
-		setup: []string{
-			`CREATE TABLE t_src (id INTEGER PRIMARY KEY, name VARCHAR, price DECIMAL(10,2), ok BOOLEAN, data BLOB, note JSON)`,
-			`CREATE TABLE t_dst (id INTEGER PRIMARY KEY, name VARCHAR, price DECIMAL(10,2), ok BOOLEAN, data BLOB, note JSON)`,
-		},
-	})
+	// DuckDB is registered by duckdb_test.go, except where duckdb-go has no library.
+	if _, ok := dialect.Get("duckdb"); ok {
+		out = append(out, server{
+			name:     "DuckDB",
+			profile:  profile.Profile{Name: "duck", Driver: "duckdb", Database: filepath.Join(dir, "t.duckdb"), Options: map[string]string{"create": "true"}},
+			database: "t", schema: "main",
+			setup: []string{
+				`CREATE TABLE t_src (id INTEGER PRIMARY KEY, name VARCHAR, price DECIMAL(10,2), ok BOOLEAN, data BLOB, note JSON)`,
+				`CREATE TABLE t_dst (id INTEGER PRIMARY KEY, name VARCHAR, price DECIMAL(10,2), ok BOOLEAN, data BLOB, note JSON)`,
+			},
+		})
+	}
 	pgLike := func(name, env, driver, user, password, database string) {
 		if os.Getenv(env) == "" {
 			return

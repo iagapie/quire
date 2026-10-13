@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iagapie/quire/internal/dialect"
 	_ "github.com/iagapie/quire/internal/dialect/clickhouse"
 	_ "github.com/iagapie/quire/internal/dialect/cockroach"
-	_ "github.com/iagapie/quire/internal/dialect/duckdb"
 	_ "github.com/iagapie/quire/internal/dialect/oracle"
 	_ "github.com/iagapie/quire/internal/dialect/tidb"
 	_ "github.com/iagapie/quire/internal/dialect/yugabyte"
@@ -44,13 +44,17 @@ func engineCases(t *testing.T) []engineCase {
 		n, _ := strconv.Atoi(port)
 		return host, n
 	}
-	out := []engineCase{{
-		name:    "DuckDB",
-		profile: profile.Profile{Driver: "duckdb", Database: filepath.Join(t.TempDir(), "e.duckdb"), Options: map[string]string{"create": "true"}},
-		rows:    "SELECT range + 1 AS n FROM range(250) ORDER BY n",
-		set:     "SET VARIABLE v = 7", get: "SELECT getvariable('v')",
-		slow: "SELECT count(*) FROM range(1000000000000) a",
-	}}
+	var out []engineCase
+	// DuckDB is registered by duckdb_test.go, except where duckdb-go has no library.
+	if _, ok := dialect.Get("duckdb"); ok {
+		out = append(out, engineCase{
+			name:    "DuckDB",
+			profile: profile.Profile{Driver: "duckdb", Database: filepath.Join(t.TempDir(), "e.duckdb"), Options: map[string]string{"create": "true"}},
+			rows:    "SELECT range + 1 AS n FROM range(250) ORDER BY n",
+			set:     "SET VARIABLE v = 7", get: "SELECT getvariable('v')",
+			slow: "SELECT count(*) FROM range(1000000000000) a",
+		})
+	}
 	pg := func(name, env, driver, user, database string) {
 		if os.Getenv(env) == "" {
 			return
