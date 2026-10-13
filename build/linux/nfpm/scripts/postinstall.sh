@@ -18,4 +18,10 @@ else
   echo "Warning: update-mime-database command not found. Custom URL schemes may not be immediately recognized." >&2
 fi
 
+# Load the AppArmor profile that lets WebKitGTK's sandbox create user namespaces
+# (Ubuntu 24.04+ denies them otherwise). Skipped where AppArmor is not running.
+if [ -f /etc/apparmor.d/quire ] && [ -d /sys/kernel/security/apparmor ] && command -v apparmor_parser >/dev/null 2>&1; then
+  apparmor_parser -r -T -W /etc/apparmor.d/quire || echo "Warning: could not load the AppArmor profile /etc/apparmor.d/quire." >&2
+fi
+
 exit 0

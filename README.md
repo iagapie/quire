@@ -149,6 +149,19 @@ Oracle connections have two clients, chosen under **Server → Client**:
 The Instant Client is not bundled with Quire: its licence puts terms on redistribution
 and on the end user that Quire does not take on.
 
+## Linux
+
+Ubuntu 24.04 and later deny unprivileged user namespaces to applications that have no
+AppArmor profile allowing them, and the WebKitGTK sandbox needs them: Quire would only
+start as root. The `.deb` package installs and loads such a profile
+(`/etc/apparmor.d/quire`, the same one Ubuntu ships for GNOME Web). With the `.tar.gz`,
+install the binary as `/usr/local/bin/quire` and load the profile it contains by hand:
+
+```bash
+sudo cp apparmor/quire /etc/apparmor.d/quire
+sudo apparmor_parser -r /etc/apparmor.d/quire
+```
+
 ## Development
 
 ### Requirements

@@ -1,0 +1,11 @@
+# Ubuntu 24.04+ denies unprivileged user namespaces to applications without an
+# AppArmor profile that allows them, and WebKitGTK's bubblewrap sandbox needs them:
+# without this profile Quire starts only as root. Same profile as Ubuntu's epiphany.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile quire /usr/local/bin/quire flags=(unconfined) {
+  userns,
+
+  include if exists <local/quire>
+}

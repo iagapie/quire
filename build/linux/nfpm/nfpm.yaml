@@ -23,6 +23,12 @@ contents:
     dst: "/usr/share/icons/hicolor/128x128/apps/quire.png"
   - src: "./build/linux/quire.desktop"
     dst: "/usr/share/applications/quire.desktop"
+  # Lets WebKitGTK's sandbox run on Ubuntu 24.04+ (see the file). Debian-based only:
+  # Fedora and openSUSE do not restrict user namespaces.
+  - src: "./build/linux/apparmor/quire"
+    dst: "/etc/apparmor.d/quire"
+    type: config
+    packager: deb
 
 # Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
 depends:
@@ -46,8 +52,7 @@ overrides:
 # scripts section to ensure desktop database is updated after install
 scripts:
   postinstall: "./build/linux/nfpm/scripts/postinstall.sh"
-  # You can also add preremove, postremove if needed
-  # preremove: "./build/linux/nfpm/scripts/preremove.sh"
+  preremove: "./build/linux/nfpm/scripts/preremove.sh"
   # postremove: "./build/linux/nfpm/scripts/postremove.sh"
 
 # If you build your app with -tags gtk3 (legacy WebKit2GTK 4.1 stack — supported through v3.0.x, removed in v3.1),

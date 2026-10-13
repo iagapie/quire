@@ -125,8 +125,11 @@ jobs:
           go tool wails3 task linux:build
           go tool wails3 task linux:generate:deb
           go tool wails3 task linux:generate:rpm
-          mv bin/*.deb bin/*.rpm dist/
-          tar -czf "dist/quire-$VERSION-linux-${{ matrix.arch }}.tar.gz" -C bin quire
+          # The packager names both quire.deb/quire.rpm: add the version and architecture.
+          rpmarch=${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
+          mv bin/quire.deb "dist/quire_${VERSION}_${{ matrix.arch }}.deb"
+          mv bin/quire.rpm "dist/quire-${VERSION}-1.${rpmarch}.rpm"
+          tar -czf "dist/quire-$VERSION-linux-${{ matrix.arch }}.tar.gz" -C bin quire -C ../build/linux apparmor/quire
 
       - name: Install NSIS
         if: matrix.platform == 'windows'
