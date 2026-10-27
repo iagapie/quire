@@ -74,14 +74,14 @@ export function isShellProfile(profileId: string): boolean {
 }
 
 /** Opens a new editor tab, connecting first when needed: a SQL editor, or a mongo shell
- * for MongoDB connections. */
+ * for MongoDB connections. Returns the tab id, or nothing when the connection failed. */
 export async function openEditor(profileId: string, database?: string, schema?: string, script = '', run = false, title?: string) {
   if (isShellProfile(profileId)) return openShell(profileId, database, script, run, title)
   const s = useStore.getState()
   const session = await s.connect(profileId)
   if (!session) return
   const d = defaults(profileId)
-  s.openTab(profileId, database ?? d.database, schema ?? d.schema, script, { run, title })
+  return s.openTab(profileId, database ?? d.database, schema ?? d.schema, script, { run, title })
 }
 
 /** Opens a table in a new tab and shows its rows. */

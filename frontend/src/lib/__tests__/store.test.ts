@@ -92,3 +92,27 @@ describe('closed tab history', () => {
     expect([named.name, savedTitle(named), unnamed.name, savedTitle(unnamed)]).toEqual(['Orders', 'Orders', undefined, 'a'])
   })
 })
+
+describe('favorite tabs', () => {
+  beforeEach(() => {
+    useStore.setState({ tabs: [], activeTab: '' })
+    useLibrary.setState({ history: [], favorites: [] })
+  })
+
+  it('saves edits of a tab back to its favorite', () => {
+    const s = useStore.getState()
+    const id = s.openShellTab('s', 'shop', 'db.a.find()')
+    const fav = useLibrary.getState().addFavorite(useStore.getState().tabs[0], 'A')
+    const other = useLibrary.getState().addFavorite(useStore.getState().tabs[0], 'B')
+    s.updateTab(id, { favoriteId: fav, script: 'db.a.find({x: 1})', database: 'shop2' })
+    const before = useLibrary.getState().favorites
+    useLibrary.getState().sync(useStore.getState().tabs)
+    const byName = Object.fromEntries(useLibrary.getState().favorites.map((f) => [f.name, f]))
+    expect([byName.A.script, byName.A.database, byName.B.script]).toEqual(['db.a.find({x: 1})', 'shop2', 'db.a.find()'])
+    expect(byName.B).toBe(before.find((f) => f.id === other))
+    // Nothing changed: the list is left as it is, so it is not written again.
+    const after = useLibrary.getState().favorites
+    useLibrary.getState().sync(useStore.getState().tabs)
+    expect(useLibrary.getState().favorites).toBe(after)
+  })
+})

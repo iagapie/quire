@@ -153,6 +153,8 @@ export interface Tab {
   /** Editor height as a percentage of the tab; results take the rest. */
   editorSize?: number
   tx?: TxState
+  /** The favorite this tab edits; its script, database and schema are saved back to it. */
+  favoriteId?: string
 }
 
 export interface Loadable<T> {
@@ -259,6 +261,7 @@ interface PersistedTab {
   dirty?: boolean
   view: ViewMode
   editorSize?: number
+  favoriteId?: string
 }
 
 const persisted = readLocal<{ tabs: PersistedTab[]; activeTab: string }>('quire.tabs', { tabs: [], activeTab: '' })
@@ -903,10 +906,11 @@ useStore.subscribe((s, prev) => {
   if (s.tabs === prev.tabs && s.activeTab === prev.activeTab && s.pageSize === prev.pageSize) return
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
+    useLibrary.getState().sync(s.tabs)
     writeLocal('quire.tabs', {
       activeTab: s.activeTab,
       // Transfer tabs follow background jobs, which do not outlive the app.
-      tabs: s.tabs.filter((t) => t.kind !== 'transfer' && t.kind !== 'doctransfer').map(({ id, kind, ddl, index, docIndex, sessionId, database, schema, partition, title, script, filePath, dirty, view, editorSize }) => ({
+      tabs: s.tabs.filter((t) => t.kind !== 'transfer' && t.kind !== 'doctransfer').map(({ id, kind, ddl, index, docIndex, sessionId, database, schema, partition, title, script, filePath, dirty, view, editorSize, favoriteId }) => ({
         id,
         kind,
         ddl,
@@ -922,6 +926,7 @@ useStore.subscribe((s, prev) => {
         dirty,
         view,
         editorSize,
+        favoriteId,
       })),
     })
     writeLocal('quire.pageSize', s.pageSize)

@@ -12,7 +12,7 @@ function defaultDb(profileId: string): string {
 export async function openShell(profileId: string, db?: string, script = '', run = false, title?: string) {
   const s = useStore.getState()
   if (!(await s.connect(profileId))) return
-  s.openShellTab(profileId, db || defaultDb(profileId), script, { run, title })
+  return s.openShellTab(profileId, db || defaultDb(profileId), script, { run, title })
 }
 
 export function collectionScript(coll: string) {

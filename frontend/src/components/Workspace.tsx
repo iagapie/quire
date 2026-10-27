@@ -14,7 +14,7 @@ import { isShellKind, useStore, type Tab } from '../lib/store'
 import { openEditor, toggleSidebar, useLayout, useTrafficLights, useUI } from '../lib/ui'
 import { cn, mod } from '../lib/utils'
 import { confirmAction } from './Confirm'
-import { openLibrary, reopen, saveFavorite } from './Library'
+import { openLibrary, reopen, saveFavorite, unfavorite, useFavoriteOf } from './Library'
 import { useLibrary } from '../lib/library'
 import { ContextMenu, IconButton, Kbd } from './ui'
 import { IndexTab } from './IndexTab'
@@ -192,6 +192,7 @@ function TabItem({
   const fraction = job ? jobFraction(job) : docJob ? docJobFraction(docJob) : 0
   const transferMode = t.transfer?.mode ?? t.docTransfer?.mode
   const special = t.kind !== 'sql' && t.kind !== 'ddl' && t.kind !== 'shell' && t.kind !== undefined
+  const favorite = useFavoriteOf(t)
   const duplicate = () => {
     const s = useStore.getState()
     if (t.kind === 'shell') s.openShellTab(t.sessionId, t.database, t.script, { title: t.title })
@@ -204,7 +205,9 @@ function TabItem({
         { label: 'Close other tabs', onSelect: onCloseOthers },
         { separator: true, hidden: special },
         { label: 'Duplicate', hidden: special, onSelect: duplicate },
-        { label: 'Add to favorites…', hidden: special || !t.script.trim(), onSelect: () => saveFavorite(t) },
+        favorite
+          ? { label: 'Remove from favorites', onSelect: () => unfavorite(t) }
+          : { label: 'Add to favorites…', hidden: special || !t.script.trim(), onSelect: () => saveFavorite(t) },
       ]}
     >
       <div
@@ -245,6 +248,8 @@ function TabItem({
           ) : (
             <Upload size={12} className={cn('shrink-0 opacity-70', jobState === 'failed' && 'text-danger opacity-100')} />
           )
+        ) : favorite ? (
+          <Star size={12} className="shrink-0 fill-warn text-warn" />
         ) : (
           <SquareTerminal size={12} className="shrink-0 opacity-70" />
         )}

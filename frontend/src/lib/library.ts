@@ -24,7 +24,10 @@ interface LibraryState {
   favorites: SavedScript[]
   /** Keeps the script of a closing editor tab; tabs without a script are not kept. */
   remember(t: Tab): void
-  addFavorite(t: Tab | SavedScript, name?: string): void
+  /** Saves a favorite and returns its id. */
+  addFavorite(t: Tab | SavedScript, name?: string): string
+  /** Saves edits of open tabs back to the favorites they were opened from. */
+  sync(tabs: Tab[]): void
   rename(id: string, name: string): void
   remove(list: 'history' | 'favorites', id: string): void
   clearHistory(): void
@@ -46,7 +49,7 @@ function fromTab(t: Tab | SavedScript): SavedScript {
   }
 }
 
-export const useLibrary = create<LibraryState>()((set) => ({
+export const useLibrary = create<LibraryState>()((set, get) => ({
   history: readLocal<SavedScript[]>('quire.history', []),
   favorites: readLocal<SavedScript[]>('quire.favorites', []),
 
@@ -60,7 +63,22 @@ export const useLibrary = create<LibraryState>()((set) => ({
   },
 
   addFavorite(t, name) {
-    set((s) => ({ favorites: [{ ...fromTab(t), name: name?.trim() || undefined }, ...s.favorites] }))
+    const fav = { ...fromTab(t), name: name?.trim() || undefined }
+    set((s) => ({ favorites: [fav, ...s.favorites] }))
+    return fav.id
+  },
+
+  sync(tabs) {
+    const open = new Map(tabs.filter((t) => t.favoriteId).map((t) => [t.favoriteId, t]))
+    if (open.size === 0) return
+    let changed = false
+    const favorites = get().favorites.map((f) => {
+      const t = open.get(f.id)
+      if (!t || (t.script === f.script && t.database === f.database && t.schema === f.schema)) return f
+      changed = true
+      return { ...f, script: t.script, database: t.database, schema: t.schema, at: Date.now() }
+    })
+    if (changed) set({ favorites })
   },
 
   rename(id, name) {

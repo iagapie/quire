@@ -21,8 +21,24 @@ export const openLibrary = (view: View) => useLibraryUI.setState({ view })
 /** Asks for an optional name, then saves the script as a favorite. */
 export const saveFavorite = (from: Tab | SavedScript) => useLibraryUI.setState({ naming: { from, name: from.title ?? '' } })
 
-/** Reopens a saved script in a new editor tab. */
-export const reopen = (x: SavedScript) => openEditor(x.sessionId, x.database, x.shell ? undefined : x.schema, x.script, false, x.name || x.title)
+/** Reopens a saved script in a new editor tab. A favorite's tab keeps it up to date, so
+ * a favorite that is already open is focused instead. */
+export async function reopen(x: SavedScript, favorite = false) {
+  const s = useStore.getState()
+  const open = favorite && s.tabs.find((t) => t.favoriteId === x.id)
+  if (open) return s.setActiveTab(open.id)
+  const id = await openEditor(x.sessionId, x.database, x.shell ? undefined : x.schema, x.script, false, x.name || x.title)
+  if (id && favorite) s.updateTab(id, { favoriteId: x.id })
+}
+
+/** The favorite an open tab edits, if it still exists. */
+export const useFavoriteOf = (t: Tab) => useLibrary((s) => (t.favoriteId ? s.favorites.find((f) => f.id === t.favoriteId) : undefined))
+
+/** Removes a tab's favorite; the tab stays open as a plain editor. */
+export function unfavorite(t: Tab) {
+  if (t.favoriteId) useLibrary.getState().remove('favorites', t.favoriteId)
+  useStore.getState().updateTab(t.id, { favoriteId: undefined })
+}
 
 export function LibraryHost() {
   const { view, naming } = useLibraryUI()
@@ -37,7 +53,11 @@ export function LibraryHost() {
   const submitName = () => {
     if (!naming) return
     if (naming.renameId) lib.rename(naming.renameId, naming.name)
-    else if (naming.from) lib.addFavorite(naming.from, naming.name)
+    else if (naming.from) {
+      const id = lib.addFavorite(naming.from, naming.name)
+      // A tab saved as a favorite keeps editing it.
+      if ('results' in naming.from) useStore.getState().updateTab(naming.from.id, { favoriteId: id })
+    }
     closeNaming()
   }
 
@@ -85,7 +105,7 @@ export function LibraryHost() {
                   className="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5 text-left"
                   onClick={() => {
                     useLibraryUI.setState({ view: null })
-                    void reopen(x)
+                    void reopen(x, view === 'favorites')
                   }}
                 >
                   {profile ? <DriverIcon driver={profile.driver} size={14} /> : <span className="size-3.5" />}
