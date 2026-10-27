@@ -28,6 +28,7 @@ import {
   type TransferJob as DocTransferJob,
 } from './shell/api'
 import type { TransferMode } from './transfer'
+import { useLibrary } from './library'
 import { readLocal, uid, writeLocal } from './utils'
 
 /** Result views: table, record and JSON for rows; tree, table and JSON for documents. */
@@ -643,6 +644,7 @@ export const useStore = create<State>()((set, get) => {
       const t = get().tabs.find((x) => x.id === id)
       if (t?.running) get().cancel(id)
       if (!isShellKind(t?.kind)) void Queries.CloseTab(id).catch(() => {})
+      if (t) useLibrary.getState().remember(t)
       set((s) => {
         const idx = s.tabs.findIndex((x) => x.id === id)
         const tabs = s.tabs.filter((x) => x.id !== id)

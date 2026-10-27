@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { isShellKind, useStore } from '../store'
+import { savedTitle, useLibrary } from '../library'
 
 const ids = () => useStore.getState().tabs.map((t) => t.title)
 
@@ -59,5 +60,35 @@ describe('shell tabs', () => {
     const a = s.openDocTransferTab('export', 's', 'shop', { jobId: 'doc-export-1' })
     expect(useStore.getState().openDocTransferTab('export', 's', 'shop', { jobId: 'doc-export-1' })).toBe(a)
     expect(useStore.getState().tabs.find((t) => t.id === a)?.docTransfer).toEqual({ mode: 'export', jobId: 'doc-export-1', collections: undefined })
+  })
+})
+
+describe('closed tab history', () => {
+  beforeEach(() => {
+    useStore.setState({ tabs: [], activeTab: '' })
+    useLibrary.setState({ history: [], favorites: [] })
+  })
+
+  it('keeps scripts of closed editors, newest first, without repeats', () => {
+    const s = useStore.getState()
+    const a = s.openShellTab('s', 'shop', 'db.a.find()')
+    const b = s.openShellTab('s', 'shop', 'db.b.find()')
+    const again = s.openShellTab('s', 'shop', 'db.a.find()')
+    const empty = s.openShellTab('s', 'shop', '  ')
+    const index = s.openDocIndexTab('s', 'shop', 'orders')
+    for (const id of [a, b, again, empty, index]) useStore.getState().closeTab(id)
+    expect(useLibrary.getState().history.map((h) => [h.script, h.shell])).toEqual([
+      ['db.a.find()', true],
+      ['db.b.find()', true],
+    ])
+  })
+
+  it('saves favorites with an optional name', () => {
+    const id = useStore.getState().openShellTab('s', 'shop', 'db.a.find()', { title: 'a' })
+    const tab = useStore.getState().tabs.find((t) => t.id === id)!
+    useLibrary.getState().addFavorite(tab, '  ')
+    useLibrary.getState().addFavorite(tab, 'Orders')
+    const [named, unnamed] = useLibrary.getState().favorites
+    expect([named.name, savedTitle(named), unnamed.name, savedTitle(unnamed)]).toEqual(['Orders', 'Orders', undefined, 'a'])
   })
 })

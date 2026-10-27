@@ -9,11 +9,13 @@ import { jobFraction } from '../lib/transfer'
 import { Transfers as DocTransfers } from '../lib/shell/api'
 import { jobFraction as docJobFraction } from '../lib/shell/transfer'
 import { useScrollX } from '../lib/useScrollX'
-import { Download, FileCode2, KeyRound, PanelLeftOpen, Plus, SquareTerminal, Upload, X } from 'lucide-react'
+import { Download, FileCode2, History, KeyRound, PanelLeftOpen, Plus, SquareTerminal, Star, Upload, X } from 'lucide-react'
 import { isShellKind, useStore, type Tab } from '../lib/store'
 import { openEditor, toggleSidebar, useLayout, useTrafficLights, useUI } from '../lib/ui'
 import { cn, mod } from '../lib/utils'
 import { confirmAction } from './Confirm'
+import { openLibrary, reopen, saveFavorite } from './Library'
+import { useLibrary } from '../lib/library'
 import { ContextMenu, IconButton, Kbd } from './ui'
 import { IndexTab } from './IndexTab'
 import { SqlTab } from './SqlTab'
@@ -78,7 +80,16 @@ export function Workspace() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const m = e.metaKey || e.ctrlKey
-      if (m && e.key === 't') {
+      if (m && e.shiftKey && e.key.toLowerCase() === 't') {
+        // Reopen the last closed tab, like a browser.
+        e.preventDefault()
+        const last = useLibrary.getState().history[0]
+        if (last) {
+          // Taken off the list so pressing again walks further back; it returns when closed.
+          useLibrary.getState().remove('history', last.id)
+          void reopen(last)
+        }
+      } else if (m && e.key === 't') {
         e.preventDefault()
         if (activeTab) void openEditor(activeTab.sessionId, activeTab.database, activeTab.schema)
       } else if (m && e.key === 'w') {
@@ -127,7 +138,7 @@ export function Workspace() {
           </SortableContext>
         </DndContext>
         {activeTab && (
-          <IconButton label={<span>{isShellKind(activeTab.kind) ? 'New shell' : 'New SQL editor'} <Kbd>{mod}T</Kbd></span>} className="no-drag mb-0.5" onClick={() => openEditor(activeTab.sessionId, activeTab.database, activeTab.schema)}>
+          <IconButton label={<span>{isShellKind(activeTab.kind) ? 'New shell' : 'New SQL editor'} <Kbd>{mod}T</Kbd></span>} className="no-drag ml-1 self-center" onClick={() => openEditor(activeTab.sessionId, activeTab.database, activeTab.schema)}>
             <Plus size={15} />
           </IconButton>
         )}
@@ -193,6 +204,7 @@ function TabItem({
         { label: 'Close other tabs', onSelect: onCloseOthers },
         { separator: true, hidden: special },
         { label: 'Duplicate', hidden: special, onSelect: duplicate },
+        { label: 'Add to favorites…', hidden: special || !t.script.trim(), onSelect: () => saveFavorite(t) },
       ]}
     >
       <div
@@ -323,6 +335,17 @@ function EmptyState() {
         <span>
           <Kbd>{mod}T</Kbd> new tab
         </span>
+        <span>
+          <Kbd>⇧{mod}T</Kbd> reopen closed tab
+        </span>
+      </div>
+      <div className="flex gap-3 text-xs">
+        <button className="flex items-center gap-1.5 text-muted hover:text-accent" onClick={() => openLibrary('favorites')}>
+          <Star size={13} /> Favorites
+        </button>
+        <button className="flex items-center gap-1.5 text-muted hover:text-accent" onClick={() => openLibrary('history')}>
+          <History size={13} /> Closed tabs
+        </button>
       </div>
     </div>
   )

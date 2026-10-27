@@ -9,6 +9,8 @@ import {
   FolderClosed,
   FunctionSquare,
   Hash,
+  History,
+  Star,
   KeyRound,
   Layers,
   Package,
@@ -54,6 +56,7 @@ import { useTheme, type ThemePref } from '../lib/theme'
 import { IconButton, Kbd, Spinner, Tip, type MenuEntry } from './ui'
 import { Message, Row, markedIn, same, useSel } from './tree'
 import { confirmAction } from './Confirm'
+import { openLibrary } from './Library'
 
 /** Tables of a schema in tree order. */
 function tableOrder(sessionId: string, db: string, schema: string): string[] {
@@ -120,6 +123,12 @@ export function Sidebar() {
       <div className={cn('drag flex h-[38px] shrink-0 items-center justify-end gap-0.5 pr-2', trafficLights ? 'pl-21' : 'pl-2')}>
         <IconButton label={<span>Hide sidebar <Kbd>{mod}B</Kbd></span>} className="no-drag" onClick={toggleSidebar}>
           <PanelLeftClose size={16} />
+        </IconButton>
+        <IconButton label="Favorites" className="no-drag" onClick={() => openLibrary('favorites')}>
+          <Star size={15} />
+        </IconButton>
+        <IconButton label={<span>Closed tabs <Kbd>⇧{mod}T</Kbd> reopens the last</span>} className="no-drag" onClick={() => openLibrary('history')}>
+          <History size={15} />
         </IconButton>
         <IconButton label="New connection" className="no-drag" onClick={() => openDialog()}>
           <Plus size={16} />

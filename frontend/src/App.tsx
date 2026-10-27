@@ -15,6 +15,7 @@ import { Workspace } from './components/Workspace'
 import { ConnectionDialog } from './components/ConnectionDialog'
 import { ConfirmHost, confirmAction } from './components/Confirm'
 import { onTransferEvent } from './components/TransferTab'
+import { LibraryHost } from './components/Library'
 
 const SIDEBAR_ANIMATION_MS = 220
 const SIDEBAR_MIN_PX = 200
@@ -161,6 +162,7 @@ export default function App() {
       </Group>
       <ConnectionDialog />
       <ConfirmHost />
+      <LibraryHost />
       <Toaster theme={dark ? 'dark' : 'light'} position="bottom-right" richColors closeButton toastOptions={{ className: 'text-[13px]' }} />
     </Tooltip.Provider>
   )
